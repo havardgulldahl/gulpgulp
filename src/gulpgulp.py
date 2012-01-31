@@ -3,6 +3,12 @@
 # havard@gulldahl.no (C) 2012
 # GPLv3 License
 
+FORMAT_CSV=1
+FORMAT_TSV=2
+FORMAT_JSON=3
+FORMAT_XLS=4
+FORMAT_DEFAULT = FORMAT_CSV
+
 cmt = """
      function login(uname, pass)
      {
@@ -45,6 +51,11 @@ cmt = """
 import urllib
 import re
 from HTMLParser import HTMLParser
+import json
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 class GulpLoginError(Exception):
     pass
@@ -127,6 +138,21 @@ class gulp(object):
     def fixData(self, data):
         return re.sub(r'<![^>]+>', '', data, re.M)
 
+    def export(self, parser, format=None):
+        _out = StringIO()
+        _format = format or FORMAT_DEFAULT
+        if _format == FORMAT_CSV:
+            for r in parser.rows:
+                _out.write(';'.join(r))
+                _out.write('\r\n')
+        elif _format == FORMAT_TSV:
+            for r in parser.rows:
+                _out.write('\t'.join(r))
+                _out.write('\r\n')
+        elif _format == FORMAT_JSON:
+            _out.write(json.dumps(parser.rows))
+
+        return _out
         
 
 if __name__ == '__main__':
