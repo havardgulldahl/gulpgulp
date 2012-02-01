@@ -9,45 +9,6 @@ FORMAT_JSON=3
 FORMAT_XLS=4
 FORMAT_DEFAULT = FORMAT_CSV
 
-cmt = """
-     function login(uname, pass)
-     {
-        // http://doc.qt.nokia.com/4.7/qdeclarativeglobalobject.html#xmlhttprequest
-          //var url = "http://tv-research.gallup.no/Login.asp";
-          var url = "http://tv-research.gallup.no/Login.asp";
-          var u = encodeURIComponent(uname);
-          var p = encodeURIComponent(pass);
-          var data = "submit=Send&Login=1&UserName="+u+"&Password="+p;
-          console.log(data);
-          var req = new XMLHttpRequest();
-          req.open("POST", url);
-          req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-          req.send(data);
-          req.onreadystatechange = function() {
-            if (req.readyState == XMLHttpRequest.DONE) {
-                console.log("POST ok");
-                console.log("Status: "+req.status);
-                console.log(req.getAllResponseHeaders());
-                console.log("cookie: "+req.getResponseHeader("Set-Cookie"))
-                if (req.status == 200) {
-                    console.log("Logged in!");
-                    header.loggedIn = true;
-               }
-            }
-            else { console.log("no dice:"+req.readyState) }
-          }
-     }
-
-     function openReport(chnl, reporttype, day, month, year)
-     {
-        var scope = "barne"; // "barne" || "Overnight"
-        //var url = "http://tv-research.gallup.no/sider/NRK3/table/2011/06/NRK3OvernightNasjonaltandel29062011.htm"
-        var url = "http://tv-research.gallup.no/sider/"+chnl+"/table/"+year+"/"+month+"/"+chnl+scope+"Nasjonalt"+
-            reporttype + day + month + year + ".htm";
-        console.log(url);
-        webView.url = url;
-        """
-
 import urllib
 import re
 from HTMLParser import HTMLParser
@@ -57,6 +18,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 import datetime
+import sqlite3
 
 class GulpLoginError(Exception):
     pass
