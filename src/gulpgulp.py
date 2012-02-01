@@ -56,6 +56,7 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+import datetime
 
 class GulpLoginError(Exception):
     pass
@@ -63,8 +64,14 @@ class GulpLoginError(Exception):
 req = None
 
 class GulpParser(HTMLParser):
-    def __init__(self):
+    reFloat = re.compile(r'^\d\d?,\d$')
+    reTime = re.compile(r'^\d\d:\d\d:\d\d$')
+    reDuration = re.compile(r'^\d\d\d\d:\d\d$')
+    def __init__(self, channel, reportType, date):
         HTMLParser.__init__(self)
+        self.meta = {'channel':channel,
+                     'reportType':reportType,
+                     'date':date}
         self.rows = []
         self.__currentrow = []
         self.__data = None
@@ -82,11 +89,7 @@ class GulpParser(HTMLParser):
             self.rows.append(self.__currentrow[:])
             self.__currentrow = []
         elif tag == 'td':
-            try:
-                self.__currentrow.append(self.__data.strip())
-            except AttributeError:
-                # self.data is None == empty tag
-                self.__currentrow.append('')
+            self.__currentrow.append(self.parse_data(self.__data))
         self.__tag = None
         self.__data = None
     def handle_data(self, data):
@@ -95,6 +98,26 @@ class GulpParser(HTMLParser):
             self.__data = data
         else:
             self.__data += data
+    def parse_data(self, data):
+        try:
+            _data = data.strip()
+        except AttributeError:
+            return ''
+        print "Parsing  some data: ==%s==" % _data
+        if self.reFloat.match(_data):
+            return float(_data.replace(',', '.'))
+        elif self.reTime.match(_data):
+            _t = [ int(s, 10) for s in _data.split(':') ]
+            _d = self.meta['date']
+            if _t[0] > 23: # next day
+                _d = _d + datetime.timedelta(60*60*24)
+                _t[0] = _t[0] - 23
+            return datetime.datetime.combine(_d, datetime.time(*_t))
+        elif self.reDuration.match(_data):
+            _mins, _secs = ( int(s, 10) for s in _data.split(':') )
+            return datetime.timedelta( _mins*60+_secs )
+        else:
+            return _data
     
 
 class gulp(object):
@@ -113,25 +136,25 @@ class gulp(object):
         else:
             self.loggedIn = True
 
-    def readReport(self, channel, reportType, day, month, year):
+    def readReport(self, channel, reportType, date):
         _scope = 'barne' # 'barne' || 'Overnight'
         _url =  'http://tv-research.gallup.no/sider/%s/table/%s/%.2s/%s%sNasjonalt%s%.2s%.2s%s.htm' % \
                  (channel,
-                  year,
-                  month,
+                  date.year,
+                  date.month,
                   channel,
                   _scope, 
                   reportType,
-                  day,
-                  month,
-                  year)
+                  date.day,
+                  date.month,
+                  date.year)
         _url = '/Users/n18040/Documents/Utvikling/gulpgulp/examplereport.html'
         print _url
         return urllib.urlopen(_url)
 
-    def parseReport(self, channel, reportType, day, month, year):
-        _data = self.fixData(self.readReport(channel, reportType, day, month, year).read())
-        _parser = GulpParser()
+    def parseReport(self, channel, reportType, date):
+        _data = self.fixData(self.readReport(channel, reportType, date).read())
+        _parser = GulpParser(channel, reportType, date)
         _parser.feed(_data)
         return _parser
 
@@ -152,16 +175,17 @@ class gulp(object):
         elif _format == FORMAT_JSON:
             _out.write(json.dumps(parser.rows))
 
-        return _out
+        return (parser.meta, _out)
+
+
         
 
 if __name__ == '__main__':
     import sys
     G = gulp()
-    r = G.parseReport('NRK3', 'andel', 29, 11, 2011)
+    r = G.parseReport('NRK3', 'andel', datetime.date(2011, 9, 11))
     print r
     from pprint import pprint as pp
-    pp(r.rows)
 
         
 
