@@ -117,7 +117,7 @@ class GulpParser(HTMLParser):
             return datetime.datetime.combine(_d, datetime.time(*_t))
         elif self.reDuration.match(_data):
             _mins, _secs = ( int(s, 10) for s in _data.split(':') )
-            return datetime.timedelta( _mins*60+_secs )
+            return datetime.timedelta(minutes=_mins, seconds=_secs)
         else:
             try:
                 return int(_data)
@@ -189,8 +189,8 @@ if __name__ == '__main__':
     import sys
     G = gulp()
     r = G.parseReport('NRK3', 'andel', datetime.date(2011, 9, 11))
-    print r
     from pprint import pprint as pp
+    pp(r.rows)
 
         
 
