@@ -104,20 +104,25 @@ class GulpParser(HTMLParser):
         except AttributeError:
             return ''
         print "Parsing  some data: ==%s==" % _data
+        if not len(_data): 
+            return _data
         if self.reFloat.match(_data):
             return float(_data.replace(',', '.'))
         elif self.reTime.match(_data):
             _t = [ int(s, 10) for s in _data.split(':') ]
             _d = self.meta['date']
             if _t[0] > 23: # next day
-                _d = _d + datetime.timedelta(60*60*24)
+                _d = _d + datetime.timedelta(1)
                 _t[0] = _t[0] - 23
             return datetime.datetime.combine(_d, datetime.time(*_t))
         elif self.reDuration.match(_data):
             _mins, _secs = ( int(s, 10) for s in _data.split(':') )
             return datetime.timedelta( _mins*60+_secs )
         else:
-            return _data
+            try:
+                return int(_data)
+            except ValueError:
+                return _data
     
 
 class gulp(object):
