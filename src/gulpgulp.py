@@ -26,7 +26,7 @@ class GulpLoginError(Exception):
 req = None
 
 class GulpParser(HTMLParser):
-    reFloat = re.compile(r'^\d\d?,\d$')
+    reFloat = re.compile(r'^\d\d?\d?,\d$')
     reTime = re.compile(r'^\d\d:\d\d:\d\d$')
     reDuration = re.compile(r'^\d\d\d\d:\d\d$')
     def __init__(self, channel, reportType, date):
@@ -126,7 +126,7 @@ class gulp(object):
         return _parser
 
     def fixData(self, data):
-        return re.sub(r'<![^>]+>', '', data, re.M)
+        return re.sub(r'<![^>]+>', '', data, re.M).decode('iso-8859-15')
 
     def export(self, parser, format=None):
         _out = StringIO()
@@ -145,6 +145,80 @@ class gulp(object):
         return (parser.meta, _out)
 
 
+class gulpdb(object):
+    def __init__(self, dbpath='gulp.db'):
+        self.db = sqlite3.connect(dbpath, detect_types=sqlite3.PARSE_DECLTYPES)
+        self.cur = self.db.cursor()
+        self.createDbIfNew()
+
+    def createDbIfNew(self):
+        try:
+            self.cur.execute('SELECT COUNT(*) FROM channels')
+        except sqlite3.OperationalError:
+            self.cur.executescript("""
+                             CREATE TABLE channels (
+                                 ID INTEGER PRIMARY KEY,
+                                 NAME VARCHAR(50)
+                             );
+                             CREATE TABLE shows (
+                                 ID INTEGER PRIMARY KEY,
+                                 NAME VARCHAR(100),
+                                 CHANNEL INTEGER
+                             );
+                             CREATE TABLE ratingtypes (
+                                 ID INTEGER PRIMARY KEY,
+                                 NAME VARCHAR(25)
+                             );
+                             CREATE TABLE segments (
+                                 ID INTEGER PRIMARY KEY,
+                                 NAME VARCHAR(25)
+                             );
+                             CREATE TABLE ratings (
+                                 ID INTEGER PRIMARY KEY,
+                                 DATE TIMESTAMP,
+                                 SHOW INTEGER,
+                                 SEGMENT INTEGER,
+                                 VALUE FLOAT
+                             );
+                             CREATE TABLE setup (
+                                 VERSION FLOAT
+                             );
+                             """)
+            self.db.commit()
+
+    def getOrCreate(self, table, property):
+        "Get the id of or create a db item,based on the NAME value"
+        _params = (property, )
+        self.cur.execute('SELECT ID FROM %s WHERE NAME=? LIMIT 1' % table, _params)
+        try:
+            return self.cur.fetchone()[0]
+        except TypeError: # no such property
+            self.cur.execute('INSERT INTO %s (NAME) VALUES (?)' % table, _params)
+            self.db.commit()
+            return self.cur.lastrowid
+
+    def addReport(self, report):
+        'Takes a gulpgulp report and its metadata'
+        _headers = [ self.getOrCreate('segments', x) for x in report.rows[0][3:] ]
+        _channel = self.getOrCreate('channels', report.meta['channel'])
+        _ratingtype = self.getOrCreate('ratingtypes', report.meta['reportType'])
+        print _headers, report.meta
+        for r in report.rows[1:]:
+            if r[0] == 'Summary': continue
+            #print r
+            _show = self.getOrCreate('shows', r[2])
+            _datetime = r[0]
+            values = [ ( _datetime, _show, h, r[_headers.index(h)+3] ) for h in _headers if len(r[2]) > 0 ]
+            print values
+            self.cur.executemany('INSERT INTO ratings (DATE, SHOW, SEGMENT, VALUE) VALUES (?, ?, ?, ?)', values)
+
+        self.db.commit()
+
+
+
+
+
+
         
 
 if __name__ == '__main__':
@@ -152,7 +226,9 @@ if __name__ == '__main__':
     G = gulp()
     r = G.parseReport('NRK3', 'andel', datetime.date(2011, 9, 11))
     from pprint import pprint as pp
-    pp(r.rows)
+    #pp(r.rows)
+    db = gulpdb()
+    db.addReport(r)
 
         
 
