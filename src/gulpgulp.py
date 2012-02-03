@@ -105,7 +105,7 @@ class gulp(object):
 
     def readReport(self, channel, reportType, date):
         _scope = 'barne' # 'barne' || 'Overnight'
-        _url =  'http://tv-research.gallup.no/sider/%s/table/%s/%.2s/%s%sNasjonalt%s%.2s%.2s%s.htm' % \
+        _url =  'http://tv-research.gallup.no/sider/%s/table/%s/%.2i/%s%sNasjonalt%s%.2i%.2i%s.htm' % \
                  (channel,
                   date.year,
                   date.month,
@@ -115,7 +115,7 @@ class gulp(object):
                   date.day,
                   date.month,
                   date.year)
-        _url = '/Users/n18040/Documents/Utvikling/gulpgulp/examplereport.html'
+        #_url = '/Users/n18040/Documents/Utvikling/gulpgulp/examplereport.html'
         print _url
         return urllib.urlopen(_url)
 
@@ -224,7 +224,7 @@ class gulpdb(object):
 if __name__ == '__main__':
     import sys
     G = gulp()
-    r = G.parseReport('NRK3', 'andel', datetime.date(2011, 9, 11))
+    r = G.parseReport('NRK3', 'andel', datetime.date(2012, 1, 4))
     from pprint import pprint as pp
     #pp(r.rows)
     db = gulpdb()
